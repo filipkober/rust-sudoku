@@ -19,8 +19,6 @@ fn main() {
                                     [1,3,0,0,0,0,2,5,0],
                                     [0,0,0,0,0,0,0,7,4],
                                     [0,0,5,2,0,6,3,0,0]] as [[u8; 9]; 9];
-    
-    solve(&mut board, 0, 0);
 
     let mut window: PistonWindow = WindowSettings::new("Sudoku", (width, height))
         .exit_on_esc(true)
@@ -36,6 +34,8 @@ fn main() {
     let mut texture: G2dTexture =
         Texture::from_image(&mut texture_context, &canvas, &TextureSettings::new()).unwrap();
 
+    solve(&mut board, 0, 0, &mut window, &mut texture, &mut texture_context, &mut canvas, cell_size, width);
+
     while let Some(e) = window.next() {
         if e.render_args().is_some() {
             texture.update(&mut texture_context, &canvas).unwrap();
@@ -45,18 +45,6 @@ fn main() {
                 clear([1.0; 4], g);
                 image(&texture, c.transform, g);
             });
-            draw_grid(cell_size, width, &mut canvas);
-            for x in 0..9 {
-                for y in 0..9 {
-                    draw_in_grid(
-                        board[x][y].to_string().as_str(),
-                        x as u32,
-                        y as u32,
-                        cell_size,
-                        &mut canvas,
-                    )
-                }
-            }
         }
     }
 }
@@ -129,7 +117,40 @@ fn is_valid(board: &mut [[u8; 9]; 9], row: usize, col: usize, num: u8) -> bool {
     true
 }
 
-fn solve(board: &mut [[u8; 9]; 9], mut row: usize, mut col: usize) -> bool {
+fn solve(board: &mut [[u8; 9]; 9], mut row: usize, mut col: usize, window: &mut PistonWindow, texture: &mut G2dTexture, texture_context: &mut G2dTextureContext, canvas: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, cell_size: u32, width: u32) -> bool {
+
+    if let Some(e) = window.next() {
+        if e.render_args().is_some() {
+            texture.update(texture_context, &canvas).unwrap();
+            
+            for x in 0..width {
+                for y in 0..width {
+                    canvas.put_pixel(x, y, Rgba([255,255,255,255]))
+                }
+            }
+
+            window.draw_2d(&e, |c, g, device| {
+                texture_context.encoder.flush(device);
+
+                clear([1.0; 4], g);
+                image(texture, c.transform, g);
+            });
+            draw_grid(cell_size, width, canvas);
+            for x in 0..9 {
+                for y in 0..9 {
+                    draw_in_grid(
+                        board[x][y].to_string().as_str(),
+                        x as u32,
+                        y as u32,
+                        cell_size,
+                        canvas,
+                    )
+                }
+            }
+        }
+    }
+
+
     if row == 8 && col == 9 {
         return true;
     }
@@ -142,7 +163,7 @@ fn solve(board: &mut [[u8; 9]; 9], mut row: usize, mut col: usize) -> bool {
         for i in 1..10 {
             if is_valid(board, row, col, i) {
                 board[row][col] = i;
-                if solve(board, row, col) {
+                if solve(board, row, col, window, texture, texture_context, canvas, cell_size, width) {
                     return true;
                 }
             }
@@ -150,6 +171,6 @@ fn solve(board: &mut [[u8; 9]; 9], mut row: usize, mut col: usize) -> bool {
         }
         return false;
     } else {
-        return solve(board, row, col + 1)
+        return solve(board, row, col + 1, window, texture, texture_context, canvas, cell_size, width)
     }
 }
